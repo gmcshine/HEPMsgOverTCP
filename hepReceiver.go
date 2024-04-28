@@ -34,7 +34,7 @@ var port = "9889"
 var unknownCount uint64 = 0
 var hepTcpCount  uint64 = 0
 
-const version = "hep_tcp_server 0.1"
+const version = "hepReceiver 0.1"
 func createFlags() {
     flag.Usage = func() {
         fmt.Fprintf(os.Stderr, "Use %s like: %s [option]\n", version, os.Args[0])
@@ -72,7 +72,7 @@ func main() {
     }
     */
 
-    fmt.Println("Usage: ./tcp_server [-tls] [-dl] [-dc] [-tu tcp/udp] [-la ipaddr] [-lp port]"); 
+    fmt.Println("Usage: ./hepReceiver [-tls] [-dl] [-dc] [-tu tcp/udp] [-la ipaddr] [-lp port]"); 
     createFlags()
     var ln net.Listener
     var errLn error
@@ -146,7 +146,7 @@ func handleRequestSimple(conn net.Conn) {
         // Print the incoming data
         //fmt.Printf("Received: %s\n", buf)
         encodedString := hex.EncodeToString(buf)
-        fmt.Println("Received message with Hex String: ", encodedString)
+        fmt.Println("Received message with first 32 Hex String: ", encodedString[:32])
     }
 }
 
@@ -217,7 +217,10 @@ func monitorSomething(conn net.Conn) {
     for {
         select {
         case <-ticker.C:
-            fmt.Printf("Program has run for another 1 minute.\nTotal message received hepTCP: %d, unknown: %d\n", hepTcpCount, unknownCount)
+            fmt.Println("Program has run for another 1 minute.")
+            if decodeAndCount == true { 
+                fmt.Printf("Total number of message received hepTCP: %d, unknown: %d\n", hepTcpCount, unknownCount)
+            }
 
         case <-signals:
             fmt.Println("Received stop signal, sleep 500 ms.")
