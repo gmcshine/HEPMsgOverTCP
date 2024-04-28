@@ -7,6 +7,7 @@ go build hepReceiver.go
 
 Usage
 ./hepReceiver [-tls] [-dl] [-dc] [-tu tcp/udp] [-la ipaddr] [-lp port]
+
   **Param,  Defaul value,    Description**
   -tls,  false,           "Enable tls."
   -dl,   false,           "Print detail log."
@@ -17,6 +18,7 @@ Usage
 
 
 ./hepSender [-tls] [-dl] [-mn msgNumSend] [-rn restTimerMicroSec] [-tn threadNum] [-tu protocol] [-da dstIP] [-dp dstPort]
+
   **Param,  Defaul value,    Description**
   -tls,  false,           "Enable tls."
   -dl,   false,           "Print detail log."
