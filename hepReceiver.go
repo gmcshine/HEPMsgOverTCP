@@ -34,6 +34,9 @@ var port = "9889"
 var unknownCount uint64 = 0
 var hepTcpCount  uint64 = 0
 
+var minCount uint64 = 0
+var conns [] net.Conn
+
 const version = "hepReceiver 0.1"
 func createFlags() {
     flag.Usage = func() {
@@ -72,12 +75,12 @@ func main() {
     }
     */
 
-    fmt.Println("Usage: ./hepReceiver [-tls] [-dl] [-dc] [-tu tcp/udp] [-la ipaddr] [-lp port]"); 
+    fmt.Println("### Usage: ./hepReceiver [-tls] [-dl] [-dc] [-tu tcp/udp] [-la ipaddr] [-lp port] ###"); 
     createFlags()
     var ln net.Listener
     var errLn error
     if (enableTLS) {
-        fmt.Println("using TLS"); 
+        fmt.Println("Using TLS"); 
         // load tls configuration
         cert, err := tls.LoadX509KeyPair(CertFilePath, KeyFilePath)
         if err != nil {
@@ -97,6 +100,7 @@ func main() {
             ClientCAs:    certPool,
             Certificates: []tls.Certificate{cert},
         }
+
         fmt.Println("Listening with TLS on: " + protocol + "://" + ipaddr + ":" + port)
         ln, errLn = tls.Listen(protocol, ipaddr + ":" + port, tlsConfig)
     } else {
@@ -109,7 +113,13 @@ func main() {
         return
     }
 
+    go sumSomething()
+    go monitorSomething()
+
     // Accept incoming connections and handle them
+    signals := make(chan os.Signal, 2)
+    signal.Notify(signals, os.Interrupt, syscall.SIGTERM)
+
     for {
         conn, err := ln.Accept()
         if err != nil {
@@ -117,22 +127,50 @@ func main() {
             continue
         }
 
+        conns = append(conns, conn)
+        
         // Handle the connection in a new goroutine
         if decodeAndCount == true {
             go handleRequestExtended(conn)
         } else {
             go handleRequestSimple(conn)
         }
-        go monitorSomething(conn)
     }
 
-    //defer ln.Close()
+    defer ln.Close()
+}
+
+func sumSomething() {
+    ticker := time.NewTicker(1 * time.Minute)
+    for {
+        select {
+        case <-ticker.C:
+            minCount++ 
+            fmt.Println("Program has run for ", minCount, " minutes. ")
+            if decodeAndCount == true { 
+                fmt.Printf("Total number of message received hepTCP: %d, unknown: %d\n", hepTcpCount, unknownCount)
+            }
+        }
+    }
+}
+
+func monitorSomething() {
+    signals := make(chan os.Signal, 2)
+    signal.Notify(signals, os.Interrupt, syscall.SIGTERM)
+    for {
+        select {
+        case <-signals:
+            fmt.Printf("\033[1;31m")
+            fmt.Println("\n!!!Received STOP signal, sleep 500 ms and then quit!!!")
+            fmt.Printf("\033[0m")
+            time.Sleep(500 * time.Millisecond)
+            os.Exit(0)
+        }
+    }
 }
 
 // Print the received data with hex format.
 func handleRequestSimple(conn net.Conn) {
-    // Close the connection when we're done
-    // defer conn.Close()
     // Read incoming data
     buf := make([]byte, 2048)
 
@@ -140,14 +178,21 @@ func handleRequestSimple(conn net.Conn) {
         _, err := conn.Read(buf)
         if err != nil {
             fmt.Println(err)
-            return
+            break;
         }
 
         // Print the incoming data
         //fmt.Printf("Received: %s\n", buf)
         encodedString := hex.EncodeToString(buf)
-        fmt.Println("Received message with first 32 Hex String: ", encodedString[:32])
+        if detailLog == true {
+            fmt.Println("Received message with first 32 Hex String: ", encodedString[:32])
+        } else {
+            fmt.Print(">")
+        }
     }
+
+    fmt.Println("Close Connection.")
+    defer conn.Close()
 }
 
 // Decode and count the number of incoming HEP message over TCP.
@@ -158,7 +203,7 @@ func handleRequestExtended(conn net.Conn) {
         // Read the incoming connection into the buffer.
         n, err := conn.Read(message)
         if err != nil {
-            fmt.Println("closed tcp connection [1]:", err.Error())
+            fmt.Println("got error on tcp connection:", err.Error())
             break
         }
 
@@ -189,10 +234,10 @@ func handleRequestExtended(conn net.Conn) {
                         }
                         break
                     } else {
-                        // Read the incoming connection into the buffer.
+                        // Read the left part of the HEP message.
                         n, err := conn.Read(message)
                         if err != nil {
-                            fmt.Println("closed tcp connection [2]:", err.Error())
+                            fmt.Print("Worker %s got error %s during reading message from connection:", name, err.Error())
                             bufferPool.Reset()
                             break
                         }
@@ -207,28 +252,7 @@ func handleRequestExtended(conn net.Conn) {
     }
 
     // Close the connection when you're done with it.
-    //conn.Close()
+    fmt.Println("Close Connection.")
+    defer conn.Close()
 }
 
-func monitorSomething(conn net.Conn) {
-    signals := make(chan os.Signal, 2)
-    signal.Notify(signals, os.Interrupt, syscall.SIGTERM)
-    ticker := time.NewTicker(1 * time.Minute)
-    for {
-        select {
-        case <-ticker.C:
-            fmt.Println("Program has run for another 1 minute.")
-            if decodeAndCount == true { 
-                fmt.Printf("Total number of message received hepTCP: %d, unknown: %d\n", hepTcpCount, unknownCount)
-            }
-
-        case <-signals:
-            fmt.Println("Received stop signal, sleep 500 ms.")
-            time.Sleep(500 * time.Millisecond)
-
-            fmt.Println("Close connection.")
-            conn.Close()
-            os.Exit(0)
-        }
-    }
-}
