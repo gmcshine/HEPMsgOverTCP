@@ -47,7 +47,7 @@ func createFlags() {
 }
 
 func dumpConfig() {
-    fmt.Println("====================Dump Configuraion Value=====================")
+    fmt.Println("====================Dump Configuraions Value=====================")
     fmt.Print("+ enableTLS:", enableTLS)
     fmt.Println("\t detailLog:", detailLog)
     fmt.Print("+ protocol:", protocol)
