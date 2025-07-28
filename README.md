@@ -1,9 +1,9 @@
 # HEPMsgOverTCP
 HEP(v3) message sender and receiver over TCP with optional mTLS support 
 
-Build:
-go build hepSender.go
-go build hepReceiver.go
+How to build:
+-> go build hepSender.go
+-> go build hepReceiver.go
 
 **Usage**
 
