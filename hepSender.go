@@ -9,7 +9,6 @@ import (
     "encoding/hex"
     "sync"
     "flag"
-    "syscall"
     "crypto/x509"
     "io/ioutil"
     "crypto/tls"
@@ -206,10 +205,8 @@ func sendHepMsg(conn net.Conn, name string, done func()){
         }
 
         if restTimerMicroSec != 0 {
-            //time.Sleep(time.Duration(restTimerMicroSec) * time.Microsecond) 
             sleepInterval := time.Duration(restTimerMicroSec) * time.Microsecond
-            req := syscall.NsecToTimespec(int64(sleepInterval))
-            syscall.Nanosleep(&req, nil)
+            time.Sleep(sleepInterval)
         }
 
         if detailLog == true || (i % 10000) == 0 {
